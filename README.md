@@ -20,7 +20,7 @@
  
 ```bash
 # 1. Clone or download the project
-git clone https://github.com/yourname/mind-maze.git
+git clone https://github.com/tusharsh-13/mind-Maze
 cd mind-maze
  
 # 2. Install the only dependency
@@ -204,7 +204,7 @@ A: No — that's intentional for Levels 4–5. A wrong input resets the sequence
  
 ## 👨‍💻 Author
  
-Built by **Xavier** · BTech CSE · Bhopal, India  
+Built by **Tushar** · BTech CSE · Bhopal, India  
 Part of a personal project portfolio focused on Python, game development, and AI.
  
 ---
@@ -216,3 +216,12 @@ This project is open-source and free to use for learning and personal projects.
 ---
  
 *"Train your brain, one puzzle at a time."* 🧠
+
+
+<img width="1247" height="913" alt="image" src="https://github.com/user-attachments/assets/2c745667-38fc-41de-b4b0-630521d63e1d" />
+
+<img width="1248" height="913" alt="image" src="https://github.com/user-attachments/assets/09e18b45-2450-48b8-92cd-79a3f5a1b675" />
+
+
+
+
