@@ -58,13 +58,15 @@ Rearrange numbered tiles into the correct order by clicking tiles adjacent to th
 **Controls:** Click a tile next to the blank space to slide it.
  
 ---
+ ### Levels 4-5 · Math Cipher
+Solve a series of arithmetic equations against a 3-lives limit. Type your answer and press `Enter`.
  
-### Levels 4–5 · Memory Sequence
-A Simon-says style pattern challenge. Watch the sequence light up, then repeat it in exact order.
+- Level 4 → Addition & subtraction only (4 questions)
+- Level 5 → Multiplication added to the mix (6 questions)
+**Controls:** Type numbers on your keyboard → press `Enter` to submit.
  
-- Level 4 → 7-step sequence
-- Level 5 → 8-step sequence, faster flashes
-**Controls:** Click the colored buttons (A / B / C / D) to replay the sequence.
+> ❤️ You have **3 lives** — each wrong answer costs one. Lose all 3 and the puzzle resets.
+
  
 ---
  
@@ -83,14 +85,12 @@ D / →   →   Move Right
  
 ---
  
-### Levels 8–9 · Math Cipher
-Solve a series of arithmetic equations against a 3-lives limit. Type your answer and press `Enter`.
+### Levels 8-9 · Memory Sequence
+A Simon-says style pattern challenge. Watch the sequence light up, then repeat it in exact order.
  
-- Level 8 → Addition & subtraction only (4 questions)
-- Level 9 → Multiplication added to the mix (6 questions)
-**Controls:** Type numbers on your keyboard → press `Enter` to submit.
- 
-> ❤️ You have **3 lives** — each wrong answer costs one. Lose all 3 and the puzzle resets.
+- Level 8 → 7-step sequence
+- Level 9 → 8-step sequence, faster flashes
+**Controls:** Click the colored buttons (A / B / C / D) to replay the sequence.
  
 ---
  
