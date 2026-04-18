@@ -628,7 +628,7 @@ class MainMenu(Screen):
             draw_button(screen, rect, label, F_H2,
                         C_ACCENT if tag != "exit" else (60,30,60),
                         hover=self.hovered == tag)
-        draw_text(screen, "© Mind Maze 2025 · Xavier's Build",
+        draw_text(screen, "© Tushar's Build",
                   F_TINY, C_MUTED, SCREEN_W//2, SCREEN_H-24, center=True)
         for p in particles: p.draw(screen)
 
