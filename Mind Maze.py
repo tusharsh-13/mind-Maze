@@ -53,8 +53,7 @@ clock = pygame.time.Clock()
 # ── Particle System ───────────────────────────────────────────────────────────
 class Particle:
     def __init__(self, x, y, color=C_ACCENT):
-        self.x = x
-        self.y = y
+        self.x = x; self.y = y
         angle = random.uniform(0, math.pi * 2)
         speed = random.uniform(1, 4)
         self.vx = math.cos(angle) * speed
@@ -65,18 +64,16 @@ class Particle:
         self.size = random.uniform(2, 5)
 
     def update(self, dt):
-        self.x += self.vx
-        self.y += self.vy
-        self.vy += 0.05
-        self.life -= dt
+        self.x += self.vx; self.y += self.vy
+        self.vy += 0.05; self.life -= dt
         return self.life > 0
 
     def draw(self, surf):
         alpha = self.life / self.max_life
         r, g, b = self.color
         col = (int(r * alpha), int(g * alpha), int(b * alpha))
-        size = max(1, int(self.size * alpha))
-        pygame.draw.circle(surf, col, (int(self.x), int(self.y)), size)
+        pygame.draw.circle(surf, col, (int(self.x), int(self.y)),
+                           max(1, int(self.size * alpha)))
 
 particles: list[Particle] = []
 
@@ -84,7 +81,7 @@ def spawn_particles(x, y, color=C_ACCENT, n=20):
     for _ in range(n):
         particles.append(Particle(x, y, color))
 
-# ── Floating Stars Background ─────────────────────────────────────────────────
+# ── Stars Background ──────────────────────────────────────────────────────────
 stars = [(random.randint(0, SCREEN_W), random.randint(0, SCREEN_H),
           random.uniform(0.5, 2.0)) for _ in range(120)]
 
@@ -106,19 +103,18 @@ def draw_text(surf, text, font, color, x, y, center=False):
 
 def draw_glow_rect(surf, rect, color, radius=12, glow=True):
     if glow:
-        glow_surf = pygame.Surface((rect.width + 20, rect.height + 20), pygame.SRCALPHA)
+        gs = pygame.Surface((rect.width + 20, rect.height + 20), pygame.SRCALPHA)
         r, g, b = color
         for i in range(8, 0, -2):
-            pygame.draw.rect(glow_surf, (r, g, b, 15 * i),
-                             (10 - i, 10 - i, rect.width + 2*i, rect.height + 2*i),
+            pygame.draw.rect(gs, (r, g, b, 15 * i),
+                             (10-i, 10-i, rect.width+2*i, rect.height+2*i),
                              border_radius=radius + i)
-        surf.blit(glow_surf, (rect.x - 10, rect.y - 10))
+        surf.blit(gs, (rect.x - 10, rect.y - 10))
     pygame.draw.rect(surf, color, rect, border_radius=radius)
 
 def draw_button(surf, rect, text, font, base_col, hover=False, active=False):
     col = tuple(min(255, c + 40) for c in base_col) if hover else base_col
-    if active:
-        col = C_GOLD
+    if active: col = C_GOLD
     draw_glow_rect(surf, rect, col, radius=10, glow=hover)
     pygame.draw.rect(surf, col, rect, border_radius=10)
     pygame.draw.rect(surf, tuple(min(255, c + 80) for c in col), rect, 2, border_radius=10)
@@ -132,10 +128,9 @@ def draw_panel(surf, rect, alpha=200):
     pygame.draw.rect(surf, C_ACCENT, rect, 1, border_radius=14)
 
 # ── Save / Load ───────────────────────────────────────────────────────────────
-def save_game(level, puzzle_state=None):
-    data = {"level": level, "puzzle_state": puzzle_state}
+def save_game(level):
     with open(SAVE_FILE, "w") as f:
-        json.dump(data, f)
+        json.dump({"level": level}, f)
 
 def load_game():
     if os.path.exists(SAVE_FILE):
@@ -147,37 +142,31 @@ def delete_save():
     if os.path.exists(SAVE_FILE):
         os.remove(SAVE_FILE)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  PUZZLE DEFINITIONS  (10 levels, increasing difficulty)
-# ═══════════════════════════════════════════════════════════════════════════════
 
-# --- SLIDING TILE PUZZLE (levels 1-3) -----------------------------------------
+# =============================================================================
+#  PUZZLE CLASSES
+# =============================================================================
+
+# ── Sliding Tile (levels 1-3) ─────────────────────────────────────────────────
 class SlidingPuzzle:
-    """Classic N-puzzle. Level controls grid size & shuffles."""
     def __init__(self, level):
-        if level <= 1:
-            self.size = 3
-            shuffles = 20
-        elif level <= 2:
-            self.size = 3
-            shuffles = 40
-        else:
-            self.size = 4
-            shuffles = 60
+        if level <= 1:   self.size, shuffles = 3, 20
+        elif level <= 2: self.size, shuffles = 3, 40
+        else:            self.size, shuffles = 4, 60
         n = self.size
-        self.tiles = list(range(1, n * n)) + [0]   # 0 = blank
+        self.tiles = list(range(1, n * n)) + [0]
         self.goal  = list(range(1, n * n)) + [0]
         self._shuffle(shuffles)
         self.moves = 0
 
     def _shuffle(self, n):
         blank = self.tiles.index(0)
-        dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        dirs = [(-1,0),(1,0),(0,-1),(0,1)]
         for _ in range(n):
             r, c = divmod(blank, self.size)
-            options = [(r+dr, c+dc) for dr, dc in dirs
-                       if 0 <= r+dr < self.size and 0 <= c+dc < self.size]
-            nr, nc = random.choice(options)
+            opts = [(r+dr, c+dc) for dr,dc in dirs
+                    if 0 <= r+dr < self.size and 0 <= c+dc < self.size]
+            nr, nc = random.choice(opts)
             nb = nr * self.size + nc
             self.tiles[blank], self.tiles[nb] = self.tiles[nb], self.tiles[blank]
             blank = nb
@@ -186,12 +175,11 @@ class SlidingPuzzle:
         blank = self.tiles.index(0)
         br, bc = divmod(blank, self.size)
         cr, cc = divmod(idx, self.size)
-        if abs(br - cr) + abs(bc - cc) == 1:
+        if abs(br-cr) + abs(bc-cc) == 1:
             self.tiles[blank], self.tiles[idx] = self.tiles[idx], self.tiles[blank]
             self.moves += 1
 
-    def solved(self):
-        return self.tiles == self.goal
+    def solved(self): return self.tiles == self.goal
 
     def draw(self, surf, ox, oy, tile_size=100):
         n = self.size
@@ -209,71 +197,143 @@ class SlidingPuzzle:
                 draw_text(surf, str(val), F_H1, C_ACCENT,
                           rect.centerx, rect.centery, center=True)
 
-# --- SEQUENCE MEMORY PUZZLE (levels 4-5) --------------------------------------
-class SequencePuzzle:
-    """Simon Says - watch the pattern, repeat it."""
+
+# ── Math Puzzle (levels 4-5) — level 5 has hard multi-step word problems ──────
+class MathPuzzle:
     def __init__(self, level):
-        self.length    = 3 + level       # 7 for level 4, 8 for level 5
-        self.colors    = [C_ACCENT, C_ACCENT2, C_GREEN, C_GOLD]
-        self.labels    = ["A", "B", "C", "D"]
-        self.sequence  = [random.randint(0, 3) for _ in range(self.length)]
-        self.phase     = "show"           # show | input
-        self.show_idx  = 0
-        self.player_in = []
-        self.timer     = 0
-        self.show_duration = max(0.3, 0.8 - level * 0.05)
-        self.flash_idx = -1
+        self.level = level
+        count = 4 if level == 4 else 5
+        self.questions = [self._gen_q(level) for _ in range(count)]
+        self.current   = 0
+        self.input_str = ""
+        self.feedback  = ""
+        self.fb_timer  = 0
+        self.lives     = 3
 
-    def update(self, dt):
-        if self.phase == "show":
-            self.timer += dt
-            if self.timer >= self.show_duration:
-                self.timer = 0
-                self.flash_idx = -1
-                self.show_idx += 1
-                if self.show_idx >= len(self.sequence):
-                    self.phase = "input"
+    def _gen_q(self, level):
+        if level == 4:
+            ops = ["+", "-", "*"]
+            op  = random.choice(ops)
+            if op == "+":
+                a, b = random.randint(10, 99), random.randint(10, 99)
+                return (f"{a} + {b} = ?", a + b)
+            elif op == "-":
+                a = random.randint(30, 99); b = random.randint(10, a)
+                return (f"{a} - {b} = ?", a - b)
             else:
-                self.flash_idx = self.sequence[self.show_idx] if self.timer < self.show_duration * 0.7 else -1
+                a, b = random.randint(2, 15), random.randint(2, 12)
+                return (f"{a} x {b} = ?", a * b)
+        else:
+            # Hard multi-step word problems
+            t = random.randint(1, 8)
+            if t == 1:
+                s1 = random.choice([60,70,80,90])
+                s2 = random.choice([50,55,65,75])
+                h  = random.choice([2,3,4])
+                ans = (s1+s2)*h
+                q = (f"Two trains depart simultaneously in opposite directions.\n"
+                     f"Train A: {s1} km/h  |  Train B: {s2} km/h\n"
+                     f"Distance between them after {h} hours? (km)")
+            elif t == 2:
+                p = random.choice([1000,2000,5000])
+                r = random.choice([5,10,20])
+                y = random.choice([2,3])
+                ans = p + p*r*y//100
+                q = (f"Principal: Rs.{p}  Rate: {r}% per year (simple interest)\n"
+                     f"What is the total amount after {y} years?")
+            elif t == 3:
+                age_a = random.randint(10,30)
+                diff  = random.randint(3,15)
+                yrs   = random.randint(3,10)
+                ans   = (age_a + yrs) + (age_a + diff + yrs)
+                q = (f"A is {age_a} yrs old. B is {diff} years older than A.\n"
+                     f"What is the SUM of their ages after {yrs} years?")
+            elif t == 4:
+                w  = random.choice([4,5,6,8])
+                d  = random.choice([10,12,15,20])
+                nw = random.choice([2,3,4])
+                ans = (w*d) // (w+nw)
+                q = (f"{w} workers finish a project in {d} days.\n"
+                     f"{nw} additional workers join from day 1.\n"
+                     f"In how many days is the project finished now?")
+            elif t == 5:
+                l1 = random.choice([10,15,20])
+                p1 = random.choice([20,25,30])
+                l2 = random.choice([10,15,20])
+                p2 = random.choice([40,50,60])
+                ans = l1*p1//100 + l2*p2//100
+                q = (f"Mixture A: {l1}L  ({p1}% milk)\n"
+                     f"Mixture B: {l2}L  ({p2}% milk)\n"
+                     f"Total milk in litres when combined?")
+            elif t == 6:
+                cp   = random.choice([200,300,400,500])
+                perc = random.choice([10,15,20,25])
+                ans  = cp + cp*perc//100
+                q = (f"Cost Price: Rs.{cp}\n"
+                     f"Shopkeeper sells at {perc}% profit.\n"
+                     f"What is the Selling Price? (Rs.)")
+            elif t == 7:
+                first = random.choice([1,2,3,4,5])
+                diff  = random.choice([2,3,4,5])
+                n     = random.choice([5,6,7,8])
+                last  = first + (n-1)*diff
+                ans   = n*(first+last)//2
+                q = (f"Arithmetic series: first term={first}, common difference={diff}\n"
+                     f"What is the sum of the first {n} terms?")
+            else:
+                dist  = random.choice([120,180,240,300])
+                speed = random.choice([40,60,80])
+                ans   = dist // speed
+                q = (f"Distance: {dist} km  |  Speed: {speed} km/h\n"
+                     f"How many hours does the journey take?")
+            return (q, ans)
 
-    def press(self, idx):
-        if self.phase != "input":
-            return "wait"
-        self.player_in.append(idx)
-        pos = len(self.player_in) - 1
-        if self.player_in[pos] != self.sequence[pos]:
+    def submit(self):
+        if not self.input_str: return "empty"
+        try:    ans = int(self.input_str)
+        except:
+            self.feedback = "Integers only!"; self.fb_timer = 2.0
+            self.input_str = ""; return "invalid"
+        q_text, correct = self.questions[self.current]
+        self.input_str = ""
+        if ans == correct:
+            self.current += 1
+            if self.current >= len(self.questions): return "correct"
+            self.feedback = "Correct!"; self.fb_timer = 1.0
+            return "next"
+        else:
+            self.lives -= 1
+            self.feedback = f"Wrong! Answer: {correct}"
+            self.fb_timer = 1.5
+            if self.lives <= 0: return "dead"
             return "wrong"
-        if len(self.player_in) == len(self.sequence):
-            return "correct"
-        return "ok"
+
+    def solved(self): return self.current >= len(self.questions)
 
     def draw(self, surf, cx, cy):
-        btn_size = 120
-        gap = 20
-        total_w = 4 * btn_size + 3 * gap
-        sx = cx - total_w // 2
-        sy = cy - btn_size // 2
-        btns = []
-        for i in range(4):
-            rect = pygame.Rect(sx + i * (btn_size + gap), sy, btn_size, btn_size)
-            btns.append(rect)
-            active = self.flash_idx == i
-            col = self.colors[i]
-            if active:
-                draw_glow_rect(surf, rect, col, radius=12)
-            else:
-                pygame.draw.rect(surf, tuple(c // 4 for c in col), rect, border_radius=12)
-                pygame.draw.rect(surf, col, rect, 2, border_radius=12)
-            draw_text(surf, self.labels[i], F_H2, col if not active else C_WHITE,
-                      rect.centerx, rect.centery, center=True)
-        return btns
+        if self.current >= len(self.questions): return
+        q_text, _ = self.questions[self.current]
+        draw_text(surf, f"Question {self.current+1} / {len(self.questions)}",
+                  F_BODY, C_MUTED, cx, cy - 210, center=True)
+        lines = q_text.split("\n")
+        for li, line in enumerate(lines):
+            font = F_H2 if self.level == 5 else F_H1
+            draw_text(surf, line, font, C_GOLD, cx, cy - 155 + li * 42, center=True)
+        box = pygame.Rect(cx - 150, cy + 30, 300, 60)
+        draw_panel(surf, box)
+        display = self.input_str + ("_" if (time.time() % 1) < 0.6 else "")
+        draw_text(surf, display, F_H1, C_WHITE, cx, cy + 60, center=True)
+        if self.fb_timer > 0:
+            ok  = "Correct" in self.feedback
+            col = C_GREEN if ok else C_ERROR
+            draw_text(surf, self.feedback, F_H2, col, cx, cy + 110, center=True)
+        for i in range(3):
+            col = C_ACCENT2 if i < self.lives else C_MUTED
+            draw_text(surf, "♥", F_H2, col, cx - 40 + i * 40, cy + 160, center=True)
 
-    def solved(self):
-        return len(self.player_in) == len(self.sequence) and self.player_in == self.sequence[:len(self.player_in)]
 
-# --- MAZE NAVIGATION (levels 6-7) --------------------------------------------
+# ── Maze (levels 6-7) ─────────────────────────────────────────────────────────
 class MazePuzzle:
-    """Generate a random maze, navigate from start to exit."""
     def __init__(self, level):
         self.cols = 11 + (level - 6) * 4
         self.rows = 11 + (level - 6) * 4
@@ -284,234 +344,242 @@ class MazePuzzle:
 
     def _gen_maze(self):
         c, r = self.cols, self.rows
-        grid = [[1] * c for _ in range(r)]
-        visited = [[False] * c for _ in range(r)]
-
+        grid    = [[1]*c for _ in range(r)]
+        visited = [[False]*c for _ in range(r)]
         def carve(x, y):
-            visited[y][x] = True
-            grid[y][x] = 0
-            dirs = [(0, -2), (0, 2), (-2, 0), (2, 0)]
+            visited[y][x] = True; grid[y][x] = 0
+            dirs = [(0,-2),(0,2),(-2,0),(2,0)]
             random.shuffle(dirs)
             for dx, dy in dirs:
-                nx, ny = x + dx, y + dy
+                nx, ny = x+dx, y+dy
                 if 0 < nx < c-1 and 0 < ny < r-1 and not visited[ny][nx]:
-                    grid[y + dy//2][x + dx//2] = 0
+                    grid[y+dy//2][x+dx//2] = 0
                     carve(nx, ny)
-
         carve(1, 1)
         grid[r-2][c-2] = 0
         return grid
 
     def move(self, dx, dy):
-        nx = self.player[0] + dx
-        ny = self.player[1] + dy
+        nx = self.player[0]+dx; ny = self.player[1]+dy
         if 0 <= nx < self.cols and 0 <= ny < self.rows and self.grid[ny][nx] == 0:
-            self.player = [nx, ny]
-            self.moves += 1
+            self.player = [nx, ny]; self.moves += 1
 
-    def solved(self):
-        return self.player == self.exit
+    def solved(self): return self.player == self.exit
 
     def draw(self, surf, ox, oy, cell):
         for ry in range(self.rows):
             for rx in range(self.cols):
-                rect = pygame.Rect(ox + rx * cell, oy + ry * cell, cell, cell)
-                if self.grid[ry][rx] == 1:
-                    pygame.draw.rect(surf, C_WALL, rect)
-                else:
-                    pygame.draw.rect(surf, C_PATH, rect)
-
-        # exit glow
+                rect = pygame.Rect(ox+rx*cell, oy+ry*cell, cell, cell)
+                pygame.draw.rect(surf, C_WALL if self.grid[ry][rx] else C_PATH, rect)
         ex, ey = self.exit
-        er = pygame.Rect(ox + ex * cell, oy + ey * cell, cell, cell)
-        draw_glow_rect(surf, er, C_GREEN, radius=2)
-
-        # player
+        draw_glow_rect(surf, pygame.Rect(ox+ex*cell, oy+ey*cell, cell, cell),
+                       C_GREEN, radius=2)
         px, py = self.player
-        pr = pygame.Rect(ox + px * cell + 2, oy + py * cell + 2, cell - 4, cell - 4)
-        draw_glow_rect(surf, pr, C_PLAYER, radius=4)
+        draw_glow_rect(surf, pygame.Rect(ox+px*cell+2, oy+py*cell+2, cell-4, cell-4),
+                       C_PLAYER, radius=4)
 
-# --- MATH CIPHER PUZZLE (levels 8-9) -----------------------------------------
-class MathPuzzle:
-    """Solve a series of equations. Each wrong answer costs a life."""
+
+# ── Sequence Memory Puzzle (levels 8-9) ───────────────────────────────────────
+#   Features: 3-sec countdown · green glow on correct · red blink on wrong ·
+#             retry overlay after wrong press
+class SequencePuzzle:
     def __init__(self, level):
-        count = 4 + (level - 8) * 2     # 4 or 6 questions
-        self.questions = []
-        for _ in range(count):
-            self.questions.append(self._gen_q(level))
-        self.current = 0
-        self.input_str = ""
-        self.feedback  = ""
-        self.fb_timer  = 0
-        self.lives     = 3
+        seq_len = 6 + (level - 8) * 3      # level 8=6, level 9=9
+        self.colors  = [C_ACCENT, C_ACCENT2, C_GREEN, C_GOLD]
+        self.labels  = ["A", "B", "C", "D"]
+        self.sequence = [random.randint(0, 3) for _ in range(seq_len)]
 
-    def _gen_q(self, level):
-        ops = ["+", "-", "*"] if level >= 9 else ["+", "-"]
-        op  = random.choice(ops)
-        if op == "+":
-            a, b = random.randint(10, 99), random.randint(10, 99)
-            ans = a + b
-        elif op == "-":
-            a = random.randint(30, 99)
-            b = random.randint(10, a)
-            ans = a - b
-        else:
-            a, b = random.randint(2, 15), random.randint(2, 12)
-            ans = a * b
-        return (f"{a} {op} {b} = ?", ans)
+        # phases: "countdown" → "show" → "input" → "wrong_flash" → "retry"
+        self.phase         = "countdown"
+        self.countdown     = 3.0
+        self.show_idx      = 0
+        self.player_in     = []
+        self.timer         = 0
+        self.show_duration = max(0.35, 0.9 - (level - 8) * 0.15)
+        self.flash_idx     = -1
 
-    def submit(self):
-        if not self.input_str:
-            return "empty"
-        try:
-            ans = int(self.input_str)
-        except:
-            self.feedback = "Numbers only!"
-            self.fb_timer = 2.0
-            self.input_str = ""
-            return "invalid"
-        q_text, correct = self.questions[self.current]
-        self.input_str = ""
-        if ans == correct:
-            self.current += 1
-            if self.current >= len(self.questions):
+        self.feedback_idx   = -1
+        self.feedback_col   = None
+        self.feedback_timer = 0.0
+        self.show_retry     = False
+
+    def update(self, dt):
+        if self.phase == "countdown":
+            self.countdown -= dt
+            if self.countdown <= 0:
+                self.phase = "show"; self.countdown = 0
+
+        elif self.phase == "show":
+            self.timer += dt
+            if self.timer >= self.show_duration:
+                self.timer = 0; self.flash_idx = -1
+                self.show_idx += 1
+                if self.show_idx >= len(self.sequence):
+                    self.phase = "input"
+            else:
+                self.flash_idx = (self.sequence[self.show_idx]
+                                  if self.timer < self.show_duration * 0.7 else -1)
+
+        elif self.phase == "wrong_flash":
+            self.feedback_timer -= dt
+            if self.feedback_timer <= 0:
+                self.phase = "retry"; self.show_retry = True
+
+        if self.feedback_col == C_GREEN and self.feedback_timer > 0 and self.phase == "input":
+            self.feedback_timer -= dt
+            if self.feedback_timer <= 0:
+                self.feedback_idx = -1
+
+    def press(self, idx):
+        if self.phase != "input": return "wait"
+        pos = len(self.player_in)
+        if idx == self.sequence[pos]:
+            self.player_in.append(idx)
+            self.feedback_idx   = idx
+            self.feedback_col   = C_GREEN
+            self.feedback_timer = 0.4
+            if len(self.player_in) == len(self.sequence):
                 return "correct"
-            self.feedback = "✓ Correct!"
-            self.fb_timer = 1.0
-            return "next"
+            return "ok"
         else:
-            self.lives -= 1
-            self.feedback = f"✗ Wrong! Answer: {correct}"
-            self.fb_timer = 1.5
-            if self.lives <= 0:
-                return "dead"
+            self.feedback_idx   = idx
+            self.feedback_col   = C_ERROR
+            self.feedback_timer = 0.55
+            self.phase          = "wrong_flash"
             return "wrong"
 
-    def solved(self):
-        return self.current >= len(self.questions)
+    def reset_for_retry(self):
+        self.phase          = "countdown"
+        self.countdown      = 3.0
+        self.show_idx       = 0
+        self.player_in      = []
+        self.timer          = 0
+        self.flash_idx      = -1
+        self.feedback_idx   = -1
+        self.feedback_col   = None
+        self.feedback_timer = 0.0
+        self.show_retry     = False
 
     def draw(self, surf, cx, cy):
-        if self.current >= len(self.questions):
-            return
-        q_text, _ = self.questions[self.current]
-        prog = f"Question {self.current + 1} / {len(self.questions)}"
-        draw_text(surf, prog, F_BODY, C_MUTED, cx, cy - 120, center=True)
-        draw_text(surf, q_text, F_H1, C_GOLD, cx, cy - 60, center=True)
+        btn_size = 120; gap = 20
+        total_w  = 4 * btn_size + 3 * gap
+        sx = cx - total_w // 2
+        sy = cy - btn_size // 2
+        btns = []
 
-        # input box
-        box = pygame.Rect(cx - 150, cy, 300, 60)
-        draw_panel(surf, box)
-        display = self.input_str + ("_" if (time.time() % 1) < 0.6 else "")
-        draw_text(surf, display, F_H1, C_WHITE, cx, cy + 30, center=True)
+        for i in range(4):
+            rect = pygame.Rect(sx + i*(btn_size+gap), sy, btn_size, btn_size)
+            btns.append(rect)
 
-        # feedback
-        if self.fb_timer > 0:
-            ok = "✓" in self.feedback
-            col = C_GREEN if ok else C_ERROR
-            draw_text(surf, self.feedback, F_H2, col, cx, cy + 90, center=True)
+            is_show_flash = (self.flash_idx == i)
+            is_feedback   = (self.feedback_idx == i and self.feedback_timer > 0)
+            base_col = self.colors[i]
 
-        # lives
-        for i in range(3):
-            col = C_ACCENT2 if i < self.lives else C_MUTED
-            draw_text(surf, "♥", F_H2, col, cx - 40 + i * 40, cy + 140, center=True)
+            if is_show_flash:
+                draw_glow_rect(surf, rect, base_col, radius=12)
+                draw_text(surf, self.labels[i], F_H2, C_WHITE,
+                          rect.centerx, rect.centery, center=True)
+            elif is_feedback and self.feedback_col == C_GREEN:
+                draw_glow_rect(surf, rect, C_GREEN, radius=12)
+                draw_text(surf, self.labels[i], F_H2, C_WHITE,
+                          rect.centerx, rect.centery, center=True)
+            elif is_feedback and self.feedback_col == C_ERROR:
+                blink_on = int(self.feedback_timer * 10) % 2 == 0
+                col = C_ERROR if blink_on else (60, 5, 5)
+                draw_glow_rect(surf, rect, col, radius=12)
+                draw_text(surf, self.labels[i], F_H2, C_WHITE,
+                          rect.centerx, rect.centery, center=True)
+            else:
+                pygame.draw.rect(surf, tuple(c//4 for c in base_col), rect, border_radius=12)
+                pygame.draw.rect(surf, base_col, rect, 2, border_radius=12)
+                draw_text(surf, self.labels[i], F_H2, base_col,
+                          rect.centerx, rect.centery, center=True)
 
-# --- WORD DECODE PUZZLE (level 10) -------------------------------------------
+        return btns
+
+    def solved(self):
+        return (len(self.player_in) == len(self.sequence) and
+                self.player_in == self.sequence)
+
+
+# ── Word Decode (level 10) ────────────────────────────────────────────────────
 class WordPuzzle:
-    """Decode a Caesar-cipher word. Harder shift, longer words."""
     WORDS = ["ALGORITHM", "RECURSION", "ITERATION", "POLYMORPHISM",
              "ABSTRACTION", "INHERITANCE", "ENCRYPTION", "FIBONACCI",
              "CONCURRENCY", "COMPILATION"]
 
     def __init__(self, level):
-        self.word  = random.choice(self.WORDS)
-        self.shift = random.randint(3, 10)
-        self.cipher = self._encode(self.word, self.shift)
-        self.hint_used = False
-        self.input_str = ""
-        self.feedback  = ""
-        self.fb_timer  = 0
-        self.lives     = 4
-        self.attempts  = 0
+        self.word       = random.choice(self.WORDS)
+        self.shift      = random.randint(3, 10)
+        self.cipher     = self._encode(self.word, self.shift)
+        self.hint_used  = False
+        self.input_str  = ""
+        self.feedback   = ""
+        self.fb_timer   = 0
+        self.lives      = 4
 
     def _encode(self, word, shift):
-        return "".join(chr((ord(c) - ord("A") + shift) % 26 + ord("A")) for c in word)
+        return "".join(chr((ord(c)-ord("A")+shift)%26+ord("A")) for c in word)
 
     def submit(self):
-        ans = self.input_str.strip().upper()
-        self.input_str = ""
-        self.attempts += 1
-        if ans == self.word:
-            return "correct"
+        ans = self.input_str.strip().upper(); self.input_str = ""
+        if ans == self.word: return "correct"
         self.lives -= 1
-        if self.lives <= 0:
-            return "dead"
-        self.feedback = f"✗ Not quite! {self.lives} tries left."
-        self.fb_timer  = 2.0
+        if self.lives <= 0: return "dead"
+        self.feedback = f"Not quite! {self.lives} tries left."
+        self.fb_timer = 2.0
         return "wrong"
 
     def hint(self):
         if not self.hint_used:
             self.hint_used = True
-            return f"Shift = {self.shift} (each letter moved forward by {self.shift})"
+            return f"Shift = {self.shift}  (each letter moved +{self.shift})"
         return "Hint already used."
 
-    def solved(self):
-        return self.input_str.strip().upper() == self.word  # checked via submit
-
     def draw(self, surf, cx, cy):
-        draw_text(surf, "DECODE THE CIPHER WORD", F_H2, C_MUTED, cx, cy - 150, center=True)
-        draw_text(surf, self.cipher, F_TITLE, C_ACCENT2, cx, cy - 80, center=True)
-
+        draw_text(surf, "DECODE THE CIPHER WORD", F_H2, C_MUTED, cx, cy-150, center=True)
+        draw_text(surf, self.cipher, F_TITLE, C_ACCENT2, cx, cy-80, center=True)
         hint_text = "Press [H] for a hint" if not self.hint_used else f"Hint: shift = {self.shift}"
-        draw_text(surf, hint_text, F_BODY, C_GOLD, cx, cy - 10, center=True)
-
-        box = pygame.Rect(cx - 200, cy + 30, 400, 60)
+        draw_text(surf, hint_text, F_BODY, C_GOLD, cx, cy-10, center=True)
+        box = pygame.Rect(cx-200, cy+30, 400, 60)
         draw_panel(surf, box)
-        display = self.input_str.upper() + ("_" if (time.time() % 1) < 0.6 else "")
-        draw_text(surf, display, F_H1, C_WHITE, cx, cy + 60, center=True)
-
+        display = self.input_str.upper() + ("_" if (time.time()%1)<0.6 else "")
+        draw_text(surf, display, F_H1, C_WHITE, cx, cy+60, center=True)
         if self.fb_timer > 0:
-            draw_text(surf, self.feedback, F_BODY, C_ERROR, cx, cy + 120, center=True)
-
+            draw_text(surf, self.feedback, F_BODY, C_ERROR, cx, cy+120, center=True)
         for i in range(4):
             col = C_ACCENT2 if i < self.lives else C_MUTED
-            draw_text(surf, "♥", F_H2, col, cx - 60 + i * 40, cy + 165, center=True)
+            draw_text(surf, "♥", F_H2, col, cx-60+i*40, cy+165, center=True)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  LEVEL BUILDER
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
+#  LEVEL MAP  — levels 4-5 = math  |  levels 8-9 = sequence  (swapped!)
+# =============================================================================
 LEVEL_INFO = {
-    1:  ("Sliding Tiles",   "Arrange tiles in order. Click adjacent to blank.",  "sliding"),
-    2:  ("Sliding Tiles II","Harder shuffle! Click tiles to slide them.",         "sliding"),
-    3:  ("Sliding Tiles III","4×4 grid — the classic challenge!",                "sliding"),
-    4:  ("Memory Sequence", "Watch the pattern. Repeat it perfectly.",            "sequence"),
-    5:  ("Memory Sequence+","Longer pattern. Stay focused!",                      "sequence"),
-    6:  ("Maze Escape",     "Navigate the maze. Use WASD or arrow keys.",         "maze"),
-    7:  ("Deep Maze",       "Bigger maze, more choices. Find the exit!",          "maze"),
-    8:  ("Math Cipher",     "Solve equations. 3 lives. Type and press ENTER.",    "math"),
-    9:  ("Hard Math",       "Multiplication joins the mix. 3 lives!",             "math"),
-    10: ("Word Decode",     "Decode the Caesar cipher. 4 lives. Press H for hint.","word"),
+    1:  ("Sliding Tiles",    "Arrange tiles in order. Click adjacent to blank.",    "sliding"),
+    2:  ("Sliding Tiles II", "Harder shuffle! Click tiles to slide them.",          "sliding"),
+    3:  ("Sliding Tiles III","4x4 grid — the classic challenge!",                   "sliding"),
+    4:  ("Math Cipher",      "Solve equations. 3 lives. Type and press ENTER.",     "math"),
+    5:  ("Hard Math",        "Multi-step word problems — think carefully!",         "math"),
+    6:  ("Maze Escape",      "Navigate the maze. Use WASD or arrow keys.",          "maze"),
+    7:  ("Deep Maze",        "Bigger maze, more paths. Find the exit!",             "maze"),
+    8:  ("Memory Sequence",  "Watch the pattern. Repeat it perfectly.",             "sequence"),
+    9:  ("Memory Sequence+", "Longer pattern, faster flashes. Stay sharp!",        "sequence"),
+    10: ("Word Decode",      "Decode the Caesar cipher. 4 lives. [H] for hint.",   "word"),
 }
 
 def build_puzzle(level):
     _, _, ptype = LEVEL_INFO[level]
-    if ptype == "sliding":
-        return SlidingPuzzle(level)
-    elif ptype == "sequence":
-        return SequencePuzzle(level)
-    elif ptype == "maze":
-        return MazePuzzle(level)
-    elif ptype == "math":
-        return MathPuzzle(level)
-    elif ptype == "word":
-        return WordPuzzle(level)
+    if ptype == "sliding":  return SlidingPuzzle(level)
+    if ptype == "math":     return MathPuzzle(level)
+    if ptype == "maze":     return MazePuzzle(level)
+    if ptype == "sequence": return SequencePuzzle(level)
+    if ptype == "word":     return WordPuzzle(level)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 #  SCREENS
-# ═══════════════════════════════════════════════════════════════════════════════
-
+# =============================================================================
 class Screen:
     def handle(self, events, dt): pass
     def draw(self): pass
@@ -521,129 +589,91 @@ class Screen:
 class MainMenu(Screen):
     def __init__(self, has_save):
         self.has_save = has_save
-        self.t = 0
-        self.hovered = None
+        self.t = 0; self.hovered = None
 
     def _buttons(self):
         btns = []
         if self.has_save:
-            btns.append(("CONTINUE",   pygame.Rect(SCREEN_W//2 - 150, 320, 300, 54), "continue"))
-        btns.append(("NEW GAME",   pygame.Rect(SCREEN_W//2 - 150, 390 if self.has_save else 330, 300, 54), "new"))
-        btns.append(("EXIT",       pygame.Rect(SCREEN_W//2 - 150, 460 if self.has_save else 400, 300, 54), "exit"))
+            btns.append(("CONTINUE", pygame.Rect(SCREEN_W//2-150, 320, 300, 54), "continue"))
+        btns.append(("NEW GAME", pygame.Rect(SCREEN_W//2-150, 390 if self.has_save else 330, 300, 54), "new"))
+        btns.append(("EXIT",     pygame.Rect(SCREEN_W//2-150, 460 if self.has_save else 400, 300, 54), "exit"))
         return btns
 
     def handle(self, events, dt):
         self.t += dt
-        mx, my = pygame.mouse.get_pos()
-        self.hovered = None
+        mx, my = pygame.mouse.get_pos(); self.hovered = None
         for _, rect, tag in self._buttons():
-            if rect.collidepoint(mx, my):
-                self.hovered = tag
-
+            if rect.collidepoint(mx, my): self.hovered = tag
         for e in events:
             if e.type == pygame.MOUSEBUTTONDOWN:
                 for _, rect, tag in self._buttons():
-                    if rect.collidepoint(mx, my):
-                        return tag
+                    if rect.collidepoint(mx, my): return tag
         return None
 
     def draw(self):
-        screen.fill(C_BG)
-        draw_stars(self.t)
-
-        # Animated title glow
+        screen.fill(C_BG); draw_stars(self.t)
         gv = int(128 + 80 * math.sin(self.t * 1.5))
-        title_col = (80, gv, 255)
-        # Shadow
         for dx, dy in [(3,3),(-1,1)]:
             img = F_TITLE.render("MIND MAZE", True, C_DARK)
-            screen.blit(img, (SCREEN_W//2 - img.get_width()//2 + dx,
-                               120 + dy))
-        draw_text(screen, "MIND MAZE", F_TITLE, title_col, SCREEN_W//2, 120, center=True)
+            screen.blit(img, (SCREEN_W//2 - img.get_width()//2+dx, 120+dy))
+        draw_text(screen, "MIND MAZE", F_TITLE, (80, gv, 255), SCREEN_W//2, 120, center=True)
         draw_text(screen, "A Puzzle Adventure", F_BODY, C_MUTED, SCREEN_W//2, 195, center=True)
-
-        # Level badges
         for i, (name, _, _) in enumerate(LEVEL_INFO.values()):
-            ox = 50 + (i % 5) * 185
-            oy = 230 + (i // 5) * 38
+            ox = 50 + (i%5)*185; oy = 230 + (i//5)*38
             r = pygame.Rect(ox, oy, 170, 28)
             pygame.draw.rect(screen, C_KEY_BG, r, border_radius=6)
             pygame.draw.rect(screen, C_WALL, r, 1, border_radius=6)
             draw_text(screen, f"Lv{i+1}: {name}", F_TINY, C_MUTED, r.centerx, r.centery, center=True)
-
         for label, rect, tag in self._buttons():
             draw_button(screen, rect, label, F_H2,
-                        C_ACCENT if tag != "exit" else (60, 30, 60),
+                        C_ACCENT if tag != "exit" else (60,30,60),
                         hover=self.hovered == tag)
-
-        draw_text(screen, "© Tushar's Build",
-                  F_TINY, C_MUTED, SCREEN_W//2, SCREEN_H - 24, center=True)
-
-        for p in particles:
-            p.draw(screen)
+        draw_text(screen, "© Mind Maze 2025 · Xavier's Build",
+                  F_TINY, C_MUTED, SCREEN_W//2, SCREEN_H-24, center=True)
+        for p in particles: p.draw(screen)
 
 
-# ── Level Select (shown on New Game to confirm) ───────────────────────────────
+# ── Level Select ──────────────────────────────────────────────────────────────
 class LevelSelectScreen(Screen):
     def __init__(self):
-        self.t = 0
-        self.hovered = None
+        self.t = 0; self.hovered = None
 
     def _rects(self):
-        rects = []
-        cols, rows = 5, 2
-        tw, th = 160, 80
-        gx, gy = 20, 20
-        sx = (SCREEN_W - (cols * tw + (cols-1)*gx)) // 2
-        sy = 200
-        for i in range(10):
-            r = i // cols
-            c = i % cols
-            x = sx + c * (tw + gx)
-            y = sy + r * (th + gy)
-            rects.append(pygame.Rect(x, y, tw, th))
-        return rects
+        cols, tw, th, gx, gy = 5, 160, 80, 20, 20
+        sx = (SCREEN_W - (cols*tw + (cols-1)*gx)) // 2; sy = 200
+        return [pygame.Rect(sx+(i%cols)*(tw+gx), sy+(i//cols)*(th+gy), tw, th)
+                for i in range(10)]
 
     def handle(self, events, dt):
         self.t += dt
-        mx, my = pygame.mouse.get_pos()
-        self.hovered = None
+        mx, my = pygame.mouse.get_pos(); self.hovered = None
         for i, rect in enumerate(self._rects()):
-            if rect.collidepoint(mx, my):
-                self.hovered = i + 1
-
-        back_rect = pygame.Rect(40, SCREEN_H - 70, 130, 44)
-
+            if rect.collidepoint(mx, my): self.hovered = i+1
+        back = pygame.Rect(40, SCREEN_H-70, 130, 44)
         for e in events:
             if e.type == pygame.MOUSEBUTTONDOWN:
-                if back_rect.collidepoint(mx, my):
-                    return ("back", None)
+                if back.collidepoint(mx, my): return ("back", None)
                 for i, rect in enumerate(self._rects()):
-                    if rect.collidepoint(mx, my):
-                        return ("select", i + 1)
+                    if rect.collidepoint(mx, my): return ("select", i+1)
         return None
 
     def draw(self):
-        screen.fill(C_BG)
-        draw_stars(self.t)
+        screen.fill(C_BG); draw_stars(self.t)
         draw_text(screen, "SELECT STARTING LEVEL", F_H1, C_ACCENT, SCREEN_W//2, 100, center=True)
         draw_text(screen, "Level 1 recommended for new players", F_BODY, C_MUTED, SCREEN_W//2, 150, center=True)
-
         for i, rect in enumerate(self._rects()):
-            lv = i + 1
-            name, _, _ = LEVEL_INFO[lv]
+            lv = i+1; name, _, _ = LEVEL_INFO[lv]
             hover = self.hovered == lv
-            col   = C_ACCENT if lv <= 3 else (C_ACCENT2 if lv <= 6 else C_GOLD)
-            if hover:
-                draw_glow_rect(screen, rect, col, radius=10)
+            col = C_ACCENT if lv<=3 else (C_GOLD if lv<=5 else (C_GREEN if lv<=7 else C_ACCENT2))
+            if hover: draw_glow_rect(screen, rect, col, radius=10)
             else:
                 pygame.draw.rect(screen, C_KEY_BG, rect, border_radius=10)
                 pygame.draw.rect(screen, col, rect, 2, border_radius=10)
-            draw_text(screen, f"Level {lv}", F_H2, col, rect.centerx, rect.y + 18, center=True)
-            draw_text(screen, name, F_TINY, C_MUTED, rect.centerx, rect.y + 50, center=True)
-
-        back = pygame.Rect(40, SCREEN_H - 70, 130, 44)
-        draw_button(screen, back, "← BACK", F_BODY, (40, 20, 60), hover=back.collidepoint(*pygame.mouse.get_pos()))
+            draw_text(screen, f"Level {lv}", F_H2, col, rect.centerx, rect.y+18, center=True)
+            draw_text(screen, name, F_TINY, C_MUTED, rect.centerx, rect.y+50, center=True)
+        back = pygame.Rect(40, SCREEN_H-70, 130, 44)
+        draw_button(screen, back, "← BACK", F_BODY, (40,20,60),
+                    hover=back.collidepoint(*pygame.mouse.get_pos()))
 
 
 # ── Game Screen ───────────────────────────────────────────────────────────────
@@ -656,78 +686,57 @@ class GameScreen(Screen):
         self.feedback_timer = 0
         self.seq_btns = []
         self.dead     = False
-        self.win_anim = 0
 
     def _next_level(self):
-        if self.level >= 10:
-            return "win"
-        self.level  += 1
-        self.puzzle  = build_puzzle(self.level)
-        self.dead    = False
+        if self.level >= 10: return "win"
+        self.level += 1
+        self.puzzle = build_puzzle(self.level)
+        self.dead   = False
         save_game(self.level)
         return None
 
     def handle(self, events, dt):
         self.t += dt
+        if self.feedback_timer > 0: self.feedback_timer -= dt
 
-        if self.feedback_timer > 0:
-            self.feedback_timer -= dt
-
-        # Update sequence puzzle animations
         _, _, ptype = LEVEL_INFO[self.level]
+
         if ptype == "sequence":
             self.puzzle.update(dt)
-            if self.puzzle.fb_timer:
-                self.puzzle.fb_timer = max(0, self.puzzle.fb_timer - dt)
 
-        if ptype == "math":
-            if self.puzzle.fb_timer > 0:
-                self.puzzle.fb_timer -= dt
-
-        if ptype == "word":
-            if self.puzzle.fb_timer > 0:
-                self.puzzle.fb_timer -= dt
+        if ptype in ("math", "word"):
+            if self.puzzle.fb_timer > 0: self.puzzle.fb_timer -= dt
 
         mx, my = pygame.mouse.get_pos()
-        back_rect = pygame.Rect(20, 20, 120, 38)
 
         for e in events:
             if e.type == pygame.KEYDOWN:
                 if e.key == pygame.K_ESCAPE:
-                    save_game(self.level)
-                    return "menu"
+                    save_game(self.level); return "menu"
 
-                # Maze controls
                 if ptype == "maze":
-                    moves = {pygame.K_UP: (0,-1), pygame.K_DOWN: (0,1),
-                             pygame.K_LEFT: (-1,0), pygame.K_RIGHT: (1,0),
-                             pygame.K_w: (0,-1), pygame.K_s: (0,1),
-                             pygame.K_a: (-1,0), pygame.K_d: (1,0)}
+                    moves = {pygame.K_UP:(0,-1), pygame.K_DOWN:(0,1),
+                             pygame.K_LEFT:(-1,0), pygame.K_RIGHT:(1,0),
+                             pygame.K_w:(0,-1), pygame.K_s:(0,1),
+                             pygame.K_a:(-1,0), pygame.K_d:(1,0)}
                     if e.key in moves:
-                        dx, dy = moves[e.key]
-                        self.puzzle.move(dx, dy)
+                        self.puzzle.move(*moves[e.key])
                         if self.puzzle.solved():
                             spawn_particles(SCREEN_W//2, SCREEN_H//2, C_GREEN, 40)
-                            res = self._next_level()
-                            if res == "win":
-                                return "win"
+                            if self._next_level() == "win": return "win"
 
-                # Math / Word text input
                 if ptype in ("math", "word"):
                     if e.key == pygame.K_BACKSPACE:
                         self.puzzle.input_str = self.puzzle.input_str[:-1]
-                    elif e.key == pygame.K_RETURN or e.key == pygame.K_KP_ENTER:
+                    elif e.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                         result = self.puzzle.submit()
                         if result == "correct":
                             spawn_particles(SCREEN_W//2, SCREEN_H//2, C_GOLD, 50)
-                            r = self._next_level()
-                            if r == "win":
-                                return "win"
+                            if self._next_level() == "win": return "win"
                         elif result == "dead":
                             self.dead = True
                     elif ptype == "word" and e.key == pygame.K_h:
-                        hint = self.puzzle.hint()
-                        self.feedback_msg   = hint
+                        self.feedback_msg   = self.puzzle.hint()
                         self.feedback_timer = 3.0
                     else:
                         ch = e.unicode
@@ -737,191 +746,206 @@ class GameScreen(Screen):
                             self.puzzle.input_str += ch.upper()
 
             if e.type == pygame.MOUSEBUTTONDOWN:
+                back_rect = pygame.Rect(20, 20, 120, 38)
                 if back_rect.collidepoint(mx, my):
-                    save_game(self.level)
-                    return "menu"
+                    save_game(self.level); return "menu"
 
-                # Sliding puzzle
                 if ptype == "sliding":
-                    ts = 90 if self.puzzle.size == 3 else 70
-                    n  = self.puzzle.size
-                    total = n * (ts + 4)
-                    ox = SCREEN_W // 2 - total // 2
-                    oy = SCREEN_H // 2 - total // 2
-                    for i in range(n * n):
+                    ts = 90 if self.puzzle.size == 3 else 68
+                    n  = self.puzzle.size; total = n*(ts+4)
+                    ox = SCREEN_W//2 - total//2; oy = SCREEN_H//2 - total//2 + 20
+                    for i in range(n*n):
                         r, c = divmod(i, n)
-                        x = ox + c * (ts + 4)
-                        y = oy + r * (ts + 4)
-                        rect = pygame.Rect(x, y, ts, ts)
+                        rect = pygame.Rect(ox+c*(ts+4), oy+r*(ts+4), ts, ts)
                         if rect.collidepoint(mx, my):
                             self.puzzle.click(i)
                             if self.puzzle.solved():
                                 spawn_particles(SCREEN_W//2, SCREEN_H//2, C_ACCENT, 40)
-                                res = self._next_level()
-                                if res == "win":
-                                    return "win"
+                                if self._next_level() == "win": return "win"
 
-                # Sequence
                 if ptype == "sequence" and self.seq_btns:
-                    for i, rect in enumerate(self.seq_btns):
-                        if rect.collidepoint(mx, my):
-                            result = self.puzzle.press(i)
-                            if result == "wrong":
-                                spawn_particles(mx, my, C_ERROR, 20)
-                                # Reset puzzle
-                                self.puzzle = SequencePuzzle(self.level)
-                            elif result == "correct":
-                                spawn_particles(SCREEN_W//2, SCREEN_H//2, C_GREEN, 40)
-                                res = self._next_level()
-                                if res == "win":
-                                    return "win"
+                    if self.puzzle.show_retry:
+                        retry_rect = pygame.Rect(SCREEN_W//2-110, SCREEN_H//2+60, 220, 52)
+                        if retry_rect.collidepoint(mx, my):
+                            self.puzzle.reset_for_retry()
+                    else:
+                        for i, rect in enumerate(self.seq_btns):
+                            if rect.collidepoint(mx, my):
+                                result = self.puzzle.press(i)
+                                if result == "correct":
+                                    spawn_particles(SCREEN_W//2, SCREEN_H//2, C_GREEN, 40)
+                                    if self._next_level() == "win": return "win"
 
-                # Dead restart
                 if self.dead:
-                    restart_rect = pygame.Rect(SCREEN_W//2 - 100, SCREEN_H//2 + 60, 200, 50)
-                    menu_rect    = pygame.Rect(SCREEN_W//2 - 100, SCREEN_H//2 + 125, 200, 50)
+                    restart_rect = pygame.Rect(SCREEN_W//2-100, SCREEN_H//2+60,  200, 50)
+                    menu_rect    = pygame.Rect(SCREEN_W//2-100, SCREEN_H//2+125, 200, 50)
                     if restart_rect.collidepoint(mx, my):
-                        self.puzzle = build_puzzle(self.level)
-                        self.dead   = False
+                        self.puzzle = build_puzzle(self.level); self.dead = False
                     if menu_rect.collidepoint(mx, my):
-                        save_game(self.level)
-                        return "menu"
+                        save_game(self.level); return "menu"
 
         return None
 
     def draw(self):
-        screen.fill(C_BG)
-        draw_stars(self.t)
-
-        # Update particles
+        screen.fill(C_BG); draw_stars(self.t)
         dt = clock.get_time() / 1000
         for p in particles[:]:
-            if not p.update(dt):
-                particles.remove(p)
-        for p in particles:
-            p.draw(screen)
+            if not p.update(dt): particles.remove(p)
+        for p in particles: p.draw(screen)
 
-        # Header
         name, desc, ptype = LEVEL_INFO[self.level]
         draw_text(screen, f"LEVEL {self.level} — {name}", F_H2, C_ACCENT, SCREEN_W//2, 35, center=True)
         draw_text(screen, desc, F_BODY, C_MUTED, SCREEN_W//2, 68, center=True)
 
-        # Level progress bar
-        bar_w = 400
-        bar_x = SCREEN_W//2 - bar_w//2
+        bar_w = 400; bar_x = SCREEN_W//2 - bar_w//2
         pygame.draw.rect(screen, C_KEY_BG, (bar_x, 90, bar_w, 8), border_radius=4)
-        prog = self.level / 10
-        pygame.draw.rect(screen, C_ACCENT, (bar_x, 90, int(bar_w * prog), 8), border_radius=4)
+        pygame.draw.rect(screen, C_ACCENT, (bar_x, 90, int(bar_w*self.level/10), 8), border_radius=4)
 
-        # Back button
         back = pygame.Rect(20, 20, 120, 38)
-        draw_button(screen, back, "← MENU", F_SMALL, (40, 20, 60),
+        draw_button(screen, back, "← MENU", F_SMALL, (40,20,60),
                     hover=back.collidepoint(*pygame.mouse.get_pos()))
 
         if self.dead:
-            self._draw_dead()
-            return
+            self._draw_dead(); return
 
-        # Puzzle area
         if ptype == "sliding":
             ts = 90 if self.puzzle.size == 3 else 68
-            n  = self.puzzle.size
-            total = n * (ts + 4)
-            ox = SCREEN_W // 2 - total // 2
-            oy = SCREEN_H // 2 - total // 2 + 20
+            n = self.puzzle.size; total = n*(ts+4)
+            ox = SCREEN_W//2 - total//2; oy = SCREEN_H//2 - total//2 + 20
             self.puzzle.draw(screen, ox, oy, tile_size=ts)
             draw_text(screen, f"Moves: {self.puzzle.moves}", F_BODY, C_MUTED,
-                      SCREEN_W//2, oy + total + 20, center=True)
+                      SCREEN_W//2, oy+total+20, center=True)
 
-        elif ptype == "sequence":
-            phase_text = "👁  Watch the sequence..." if self.puzzle.phase == "show" else "👆 Your turn! Repeat it."
-            draw_text(screen, phase_text, F_H2, C_GOLD, SCREEN_W//2, 170, center=True)
-            prog_text = f"Shown: {min(self.puzzle.show_idx, len(self.puzzle.sequence))} / {len(self.puzzle.sequence)}"
-            if self.puzzle.phase == "input":
-                prog_text = f"Input: {len(self.puzzle.player_in)} / {len(self.puzzle.sequence)}"
-            draw_text(screen, prog_text, F_BODY, C_MUTED, SCREEN_W//2, 210, center=True)
-            self.seq_btns = self.puzzle.draw(screen, SCREEN_W//2, SCREEN_H//2 + 40)
+        elif ptype == "math":
+            self.puzzle.draw(screen, SCREEN_W//2, SCREEN_H//2 - 20)
 
         elif ptype == "maze":
             cell = 30 if self.puzzle.cols <= 15 else 22
-            total_w = self.puzzle.cols * cell
-            total_h = self.puzzle.rows * cell
-            ox = SCREEN_W // 2 - total_w // 2
-            oy = SCREEN_H // 2 - total_h // 2 + 30
+            tw = self.puzzle.cols*cell; th = self.puzzle.rows*cell
+            ox = SCREEN_W//2 - tw//2; oy = SCREEN_H//2 - th//2 + 30
             self.puzzle.draw(screen, ox, oy, cell)
             draw_text(screen, "WASD / Arrow Keys to move", F_SMALL, C_MUTED,
-                      SCREEN_W//2, oy + total_h + 14, center=True)
+                      SCREEN_W//2, oy+th+14, center=True)
 
-        elif ptype == "math":
-            self.puzzle.draw(screen, SCREEN_W//2, SCREEN_H//2 - 40)
+        elif ptype == "sequence":
+            self._draw_sequence()
 
         elif ptype == "word":
             self.puzzle.draw(screen, SCREEN_W//2, SCREEN_H//2 - 60)
 
-        # Feedback overlay
         if self.feedback_timer > 0:
             draw_text(screen, self.feedback_msg, F_BODY, C_GOLD,
-                      SCREEN_W//2, SCREEN_H - 60, center=True)
+                      SCREEN_W//2, SCREEN_H-60, center=True)
 
-        # ESC hint
         draw_text(screen, "ESC → Menu  (progress saved)", F_TINY, C_MUTED,
-                  SCREEN_W - 20, SCREEN_H - 18, center=False)
+                  SCREEN_W-20, SCREEN_H-18)
+
+    def _draw_sequence(self):
+        p = self.puzzle
+
+        # ── Countdown ──
+        if p.phase == "countdown":
+            secs  = math.ceil(p.countdown) if p.countdown > 0 else 1
+            pulse = 1.0 + 0.15 * math.sin(self.t * 8)
+            size  = int(130 * pulse)
+            f_big = load_font(size, bold=True)
+            col_map = {3: C_ACCENT, 2: C_GOLD, 1: C_ERROR}
+            col = col_map.get(secs, C_WHITE)
+            draw_text(screen, str(secs), f_big, col, SCREEN_W//2, SCREEN_H//2 - 40, center=True)
+            draw_text(screen, "Get ready to remember the pattern!",
+                      F_H2, C_MUTED, SCREEN_W//2, SCREEN_H//2 + 100, center=True)
+            # Dimmed button preview
+            btn_size = 120; gap = 20
+            total_w  = 4*btn_size + 3*gap
+            sx = SCREEN_W//2 - total_w//2; sy = SCREEN_H//2 + 150
+            for i in range(4):
+                rect = pygame.Rect(sx+i*(btn_size+gap), sy, btn_size, btn_size)
+                c2 = p.colors[i]
+                pygame.draw.rect(screen, tuple(c//5 for c in c2), rect, border_radius=12)
+                pygame.draw.rect(screen, c2, rect, 1, border_radius=12)
+                draw_text(screen, p.labels[i], F_H2, c2,
+                          rect.centerx, rect.centery, center=True)
+            return
+
+        # ── Show / Input ──
+        if p.phase == "show":
+            phase_text = "Watch the sequence..."
+            prog_text  = f"Showing: {min(p.show_idx+1, len(p.sequence))} / {len(p.sequence)}"
+        elif p.phase in ("input", "wrong_flash"):
+            phase_text = "Your turn!  Repeat it."
+            prog_text  = f"Input: {len(p.player_in)} / {len(p.sequence)}"
+        else:
+            phase_text = ""; prog_text = ""
+
+        draw_text(screen, phase_text, F_H2, C_GOLD,  SCREEN_W//2, 160, center=True)
+        draw_text(screen, prog_text,  F_BODY, C_MUTED, SCREEN_W//2, 200, center=True)
+
+        self.seq_btns = p.draw(screen, SCREEN_W//2, SCREEN_H//2 + 60)
+
+        # ── Retry overlay ──
+        if p.show_retry:
+            ov = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+            ov.fill((0, 0, 0, 175)); screen.blit(ov, (0, 0))
+            draw_text(screen, "WRONG BUTTON!", F_H1, C_ERROR,
+                      SCREEN_W//2, SCREEN_H//2 - 90, center=True)
+            draw_text(screen, "Watch the pattern again carefully.",
+                      F_H2, C_MUTED, SCREEN_W//2, SCREEN_H//2 - 40, center=True)
+            draw_text(screen, "The same sequence will replay from the start.",
+                      F_BODY, C_MUTED, SCREEN_W//2, SCREEN_H//2, center=True)
+            retry_rect = pygame.Rect(SCREEN_W//2-110, SCREEN_H//2+60, 220, 52)
+            mx, my = pygame.mouse.get_pos()
+            draw_button(screen, retry_rect, "RETRY →", F_H2, C_ACCENT,
+                        hover=retry_rect.collidepoint(mx, my))
 
     def _draw_dead(self):
         ov = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-        ov.fill((0, 0, 0, 160))
-        screen.blit(ov, (0, 0))
-        draw_text(screen, "OUT OF LIVES", F_H1, C_ERROR, SCREEN_W//2, SCREEN_H//2 - 60, center=True)
-        draw_text(screen, "The puzzle resets.", F_BODY, C_MUTED, SCREEN_W//2, SCREEN_H//2 - 20, center=True)
-        restart = pygame.Rect(SCREEN_W//2 - 100, SCREEN_H//2 + 60, 200, 50)
-        menu    = pygame.Rect(SCREEN_W//2 - 100, SCREEN_H//2 + 125, 200, 50)
+        ov.fill((0,0,0,160)); screen.blit(ov, (0,0))
+        draw_text(screen, "OUT OF LIVES", F_H1, C_ERROR, SCREEN_W//2, SCREEN_H//2-60, center=True)
+        draw_text(screen, "The puzzle resets.", F_BODY, C_MUTED, SCREEN_W//2, SCREEN_H//2-20, center=True)
+        restart = pygame.Rect(SCREEN_W//2-100, SCREEN_H//2+60,  200, 50)
+        menu    = pygame.Rect(SCREEN_W//2-100, SCREEN_H//2+125, 200, 50)
         mx, my  = pygame.mouse.get_pos()
-        draw_button(screen, restart, "TRY AGAIN", F_H2, C_ACCENT, hover=restart.collidepoint(mx, my))
-        draw_button(screen, menu,    "MAIN MENU", F_H2, (60,20,60), hover=menu.collidepoint(mx, my))
+        draw_button(screen, restart, "TRY AGAIN", F_H2, C_ACCENT,   hover=restart.collidepoint(mx,my))
+        draw_button(screen, menu,    "MAIN MENU", F_H2, (60,20,60), hover=menu.collidepoint(mx,my))
 
 
 # ── Win Screen ────────────────────────────────────────────────────────────────
 class WinScreen(Screen):
     def __init__(self):
-        self.t = 0
-        delete_save()
+        self.t = 0; delete_save()
 
     def handle(self, events, dt):
         self.t += dt
-        if self.t > 1.0:
+        if self.t > 0.5:
             spawn_particles(random.randint(100, SCREEN_W-100),
                             random.randint(100, SCREEN_H//2),
-                            random.choice([C_GOLD, C_ACCENT, C_GREEN, C_ACCENT2]), 5)
+                            random.choice([C_GOLD,C_ACCENT,C_GREEN,C_ACCENT2]), 5)
         mx, my = pygame.mouse.get_pos()
         for e in events:
             if e.type == pygame.MOUSEBUTTONDOWN:
-                btn = pygame.Rect(SCREEN_W//2 - 150, SCREEN_H//2 + 100, 300, 54)
+                btn = pygame.Rect(SCREEN_W//2-150, SCREEN_H//2+100, 300, 54)
                 if btn.collidepoint(mx, my):
-                    particles.clear()
-                    return "menu"
+                    particles.clear(); return "menu"
         return None
 
     def draw(self):
-        screen.fill(C_BG)
-        draw_stars(self.t)
-        for p in particles:
-            p.draw(screen)
-
-        gv = int(200 + 55 * math.sin(self.t * 2))
-        draw_text(screen, "🏆 MIND MAZE CONQUERED!", F_H1, (255, gv, 80),
-                  SCREEN_W//2, SCREEN_H//2 - 120, center=True)
+        screen.fill(C_BG); draw_stars(self.t)
+        for p in particles: p.draw(screen)
+        gv = int(200 + 55*math.sin(self.t*2))
+        draw_text(screen, "MIND MAZE CONQUERED!", F_H1, (255,gv,80),
+                  SCREEN_W//2, SCREEN_H//2-120, center=True)
         draw_text(screen, "You solved all 10 levels!", F_H2, C_GREEN,
-                  SCREEN_W//2, SCREEN_H//2 - 60, center=True)
+                  SCREEN_W//2, SCREEN_H//2-60, center=True)
         draw_text(screen, "Your mind is truly a maze master.", F_BODY, C_MUTED,
                   SCREEN_W//2, SCREEN_H//2, center=True)
-        btn = pygame.Rect(SCREEN_W//2 - 150, SCREEN_H//2 + 100, 300, 54)
-        mx, my = pygame.mouse.get_pos()
-        draw_button(screen, btn, "BACK TO MENU", F_H2, C_ACCENT, hover=btn.collidepoint(mx, my))
+        btn = pygame.Rect(SCREEN_W//2-150, SCREEN_H//2+100, 300, 54)
+        draw_button(screen, btn, "BACK TO MENU", F_H2, C_ACCENT,
+                    hover=btn.collidepoint(*pygame.mouse.get_pos()))
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 #  MAIN LOOP
-# ═══════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 def main():
     save = load_game()
     current = MainMenu(has_save=save is not None)
@@ -931,41 +955,27 @@ def main():
         events = pygame.event.get()
         for e in events:
             if e.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                pygame.quit(); sys.exit()
 
         result = current.handle(events, dt)
 
-        # State transitions
         if result == "continue" and save:
-            current = GameScreen(start_level=save["level"])
-            save = None
-
+            current = GameScreen(start_level=save["level"]); save = None
         elif result == "new":
             current = LevelSelectScreen()
-
         elif isinstance(result, tuple) and result[0] == "select":
-            delete_save()
-            current = GameScreen(start_level=result[1])
-
+            delete_save(); current = GameScreen(start_level=result[1])
         elif isinstance(result, tuple) and result[0] == "back":
-            save = load_game()
-            current = MainMenu(has_save=save is not None)
-
+            save = load_game(); current = MainMenu(has_save=save is not None)
         elif result == "menu":
-            save = load_game()
-            current = MainMenu(has_save=save is not None)
-
+            save = load_game(); current = MainMenu(has_save=save is not None)
         elif result == "win":
             current = WinScreen()
-
         elif result == "exit":
-            pygame.quit()
-            sys.exit()
+            pygame.quit(); sys.exit()
 
         current.draw()
         pygame.display.flip()
-
 
 if __name__ == "__main__":
     main()
